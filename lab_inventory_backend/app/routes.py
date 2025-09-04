@@ -4,6 +4,13 @@ from flask import render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.db import get_db_connection
 
+# Signout route
+@app.route('/signout')
+def signout():
+    session.clear()
+    flash('You have been signed out.')
+    return redirect(url_for('signin'))
+
 
 @app.route('/studentdashboard')
 def student_dashboard():
@@ -98,7 +105,19 @@ def signin():
             session['username'] = user['username']
             session['role'] = user['role']
             flash('Login successful!')
-            return redirect(url_for('dashboard'))
+            role = user['role']
+            if role == 'student':
+                return redirect(url_for('student_dashboard'))
+            elif role == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif role == 'technician':
+                return redirect(url_for('technician_dashboard'))
+            elif role == 'lecturer':
+                return redirect(url_for('lecturer_dashboard'))
+            elif role == 'view-only':
+                return redirect(url_for('viewonly_dashboard'))
+            else:
+                return redirect(url_for('signin'))
         else:
             flash('Invalid username or password')
             return redirect(url_for('signin'))
