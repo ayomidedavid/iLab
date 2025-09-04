@@ -11,6 +11,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('admin', 'technician', 'lecturer', 'student', 'view-only') NOT NULL,
     email VARCHAR(100),
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -66,8 +67,27 @@ CREATE TABLE assets (
     location VARCHAR(100),
     purchase_date DATE,
     warranty_expiry DATE,
+    picture_path VARCHAR(255), -- File path or URL for system image
     status ENUM('working', 'needs_repair', 'decommissioned') DEFAULT 'working',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Peripherals table
+CREATE TABLE peripherals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL, -- e.g. Mouse, Keyboard, Power Pack
+    description VARCHAR(100)
+);
+
+-- Asset Peripherals table (link peripherals to assets)
+CREATE TABLE asset_peripherals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_id INT NOT NULL,
+    peripheral_id INT NOT NULL,
+    status ENUM('present', 'missing', 'damaged') DEFAULT 'present',
+    last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (asset_id) REFERENCES assets(id),
+    FOREIGN KEY (peripheral_id) REFERENCES peripherals(id)
 );
 
 -- Class sessions table
@@ -124,3 +144,4 @@ CREATE TABLE audit_logs (
     details TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
+);
