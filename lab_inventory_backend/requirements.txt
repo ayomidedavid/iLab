@@ -1,0 +1,7 @@
+Flask
+Flask-Login
+Flask-Migrate
+Flask-SQLAlchemy
+mysqlclient
+python-dotenv
+qrcode

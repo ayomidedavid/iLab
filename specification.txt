@@ -1,0 +1,163 @@
+🖥️ Lab Inventory & Management System – Requirements Document
+1. Overview
+
+The system will provide a centralized platform for managing laboratory desktops and other IT assets, tracking attendance, assigning students to systems before class sessions, and generating usage and maintenance reports. The solution will use UUIDs and QR codes to uniquely identify devices and streamline asset tracking.
+
+2. Core Objectives
+
+Maintain a real-time inventory of all laboratory desktops and equipment.
+
+Automate device identification using UUIDs + QR/Barcode labels.
+
+Allow secure user login with role-based access control.
+
+Track attendance by linking students to devices during lab sessions.
+
+Support system assignment before class sessions to reduce chaos.
+
+Provide insights and reports for management and maintenance planning.
+
+3. Functional Requirements
+3.1 User Management & Access Control
+
+System shall support role-based access:
+
+Admin: Full access to all features (CRUD assets, manage users, assign devices, view reports).
+
+Technician: Can update device status, log repairs, run audits, but cannot delete assets or manage users.
+
+Lecturer: Can create class sessions, assign students to systems, view attendance.
+
+Student: Can log in, view assigned system, scan QR for attendance.
+
+View-Only: Read-only access to inventory data.
+
+System shall support secure login (username/password).
+
+System shall log user activities for auditing purposes.
+
+3.2 Inventory Management
+
+Each desktop/device shall have a unique UUID stored in the database.
+
+System shall generate QR codes for each asset.
+
+System shall allow adding, editing, and retiring assets.
+
+System shall store:
+
+Asset ID, UUID
+
+Device Name
+
+Manufacturer & Model
+
+Serial Number
+
+OS, CPU, RAM, Storage
+
+Location (Lab, Room, Table)
+
+Purchase Date, Warranty Expiry
+
+Status (Working, Needs Repair, Decommissioned)
+
+System shall support bulk import of assets via CSV/Excel.
+
+System shall allow searching/filtering assets by status, location, or type.
+
+3.3 Device Assignment
+
+Lecturers shall be able to create a class session with:
+
+Course name
+
+Date & time
+
+Lab/room location
+
+System shall allow manual or automatic assignment of students to available desktops.
+
+System shall notify students (via dashboard or email) of their assigned PC before class.
+
+System shall allow reassigning students in case of device failure.
+
+3.4 Attendance Tracking
+
+Students shall check in by scanning the QR code on their assigned PC.
+
+System shall log:
+
+Student ID
+
+Asset ID
+
+Timestamp
+
+Lecturers shall be able to mark absentees manually if needed.
+
+Attendance records shall be exportable (Excel/PDF).
+
+3.5 Maintenance & Repair Logging
+
+Technicians shall log maintenance events (repairs, upgrades).
+
+System shall track warranty and alert when nearing expiration.
+
+System shall generate reports for frequently failing devices.
+
+3.6 Reporting & Analytics
+
+System shall provide dashboards and reports:
+
+Total devices by status (Working, Faulty, Decommissioned)
+
+Attendance percentage per session, per student
+
+Device usage patterns (which PCs are most/least used)
+
+Maintenance history per device
+
+System shall support export to Excel/PDF.
+
+3.7 Notifications
+
+System shall notify:
+
+Admin/Technician when a device is marked as faulty.
+
+Lecturers when PCs are unavailable before class.
+
+Users when maintenance is scheduled.
+
+Admin when warranties are about to expire.
+
+3.8 Security
+
+System shall restrict access based on user role.
+
+System shall keep an audit log of changes (who, what, when).
+
+Passwords shall be stored securely (hashed).
+
+4. Non-Functional Requirements
+
+Performance: System should support 100+ concurrent users.
+
+Scalability: Should allow addition of new labs and devices easily.
+
+Usability: Mobile-friendly interface for scanning and attendance.
+
+Reliability: System should work even if internet is temporarily unavailable (local cache).
+
+Maintainability: Code should be modular, well-documented, easy to update.
+
+5. Hardware/Software Requirements
+
+Backend: Flask (Python)
+
+Database: MySQL
+
+Frontend: HTML5, JavaScript (mobile-friendly)
+
+QR Code Generation: Python qrcode or equivalent
