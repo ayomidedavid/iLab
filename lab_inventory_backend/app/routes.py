@@ -48,7 +48,7 @@ def viewonly_dashboard():
 
 @app.route('/')
 def index():
-    return "Lab Inventory & Management System API is running."
+    return render_template('index.html')
 
 # Signup route
 @app.route('/signup', methods=['GET', 'POST'])
