@@ -14,6 +14,42 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Students table
+CREATE TABLE students (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    matric_number VARCHAR(20) UNIQUE NOT NULL, -- e.g. RUN/CMP/16/6499
+    course VARCHAR(100),
+    level VARCHAR(20),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Lecturers table
+CREATE TABLE lecturers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    staff_number VARCHAR(20) UNIQUE,
+    department VARCHAR(100),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Technicians table
+CREATE TABLE technicians (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    staff_number VARCHAR(20) UNIQUE,
+    specialty VARCHAR(100),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Admins table
+CREATE TABLE admins (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    staff_number VARCHAR(20) UNIQUE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- Assets table
 CREATE TABLE assets (
     id INT AUTO_INCREMENT PRIMARY KEY,
