@@ -1,43 +1,44 @@
 body {
-  background: linear-gradient(to right, #2c3e50, #3498db);
-  color: white;
   font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
+  scroll-behavior: smooth;
 }
 
+/* Hero section */
 .hero {
+
+/* Logo styles */
+.logo {
+  display: block;
+  margin: 0 auto 20px auto;
+  width: 120px;
+  height: auto;
+}
+  background: linear-gradient(to right, #2c3e50, #3498db);
   height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  flex-direction: column;
+  color: white;
 }
 
 .hero h1 {
   font-size: 3rem;
+
+.hero .app-name {
+  font-size: 3.5rem;
   font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
 }
 
 .hero p {
-  font-size: 1.2rem;
-  margin-top: 10px;
-  margin-bottom: 30px;
+  font-size: 1.3rem;
 }
 
-.btn-custom {
-  padding: 12px 25px;
-  font-size: 1.1rem;
-  border-radius: 30px;
+/* Features */
+.card {
+  border-radius: 12px;
+  transition: transform 0.3s;
 }
 
-footer {
-  text-align: center;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  color: #f0f0f0;
+.card:hover {
+  transform: translateY(-5px);
 }

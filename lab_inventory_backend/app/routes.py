@@ -1,4 +1,3 @@
-
 from app import app
 from flask import render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -23,7 +22,234 @@ def student_dashboard():
 def admin_dashboard():
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('signin'))
-    return render_template('admindashboard.html', current_user=session)
+
+    # Prepare defaults
+    total_systems = 0
+    active_count = faulty_count = maintenance_count = 0
+    systems = []
+    users = []
+    recent_activity = []
+    maintenance_list = []
+    notifications = []
+    audit_logs = []
+    current_sessions = 0
+
+    # Helper lists to try common table names
+    systems_tables = ['devices', 'systems', 'assets', 'desktops']
+    activity_tables = ['activity_logs', 'activity', 'logs']
+    maintenance_tables = ['maintenance', 'maintenance_queue', 'repairs']
+    notifications_tables = ['notifications', 'alerts']
+    audit_tables = ['audit_logs', 'audits']
+    users_table = 'users'
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Find systems table and counts
+            systems_table_found = None
+            for t in systems_tables:
+                try:
+                    cursor.execute(f"SELECT COUNT(*) AS cnt FROM `{t}`")
+                    row = cursor.fetchone()
+                    if row and row.get('cnt') is not None:
+                        total_systems = row['cnt']
+                        systems_table_found = t
+                        break
+                except Exception:
+                    continue
+
+            # If a systems table was found, get status breakdown and a sample list
+            if systems_table_found:
+                try:
+                    cursor.execute(f"SELECT status, COUNT(*) AS cnt FROM `{systems_table_found}` GROUP BY status")
+                    for r in cursor.fetchall():
+                        st = (r.get('status') or '').lower()
+                        cnt = r.get('cnt', 0)
+                        if st in ('active', 'working', 'running'):
+                            active_count += cnt
+                        elif st in ('faulty', 'broken'):
+                            faulty_count += cnt
+                        elif st in ('maintenance', 'repair'):
+                            maintenance_count += cnt
+                        else:
+                            # other categories ignored for summary
+                            pass
+                except Exception:
+                    pass
+
+                try:
+                    cursor.execute(f"SELECT uuid, hostname, location, status, assigned_to FROM `{systems_table_found}` ORDER BY id DESC LIMIT 100")
+                    systems = cursor.fetchall() or []
+                except Exception:
+                    systems = []
+
+            # Users
+            try:
+                cursor.execute(f"SELECT username, role, status FROM `{users_table}` ORDER BY id DESC LIMIT 100")
+                users = cursor.fetchall() or []
+            except Exception:
+                users = []
+
+            # Recent activity
+            activity_table_found = None
+            for t in activity_tables:
+                try:
+                    cursor.execute(f"SELECT action AS message, timestamp AS time, user_id FROM `{t}` ORDER BY timestamp DESC LIMIT 25")
+                    recent_activity = cursor.fetchall() or []
+                    activity_table_found = t
+                    break
+                except Exception:
+                    continue
+
+            # Attempt to enrich recent activity with username if possible
+            if recent_activity:
+                for act in recent_activity:
+                    try:
+                        uid = act.get('user_id')
+                        if uid:
+                            cursor.execute("SELECT username FROM users WHERE id=%s", (uid,))
+                            u = cursor.fetchone()
+                            act['user'] = u['username'] if u else 'User ' + str(uid)
+                        else:
+                            act['user'] = 'System'
+                    except Exception:
+                        act['user'] = 'System'
+
+            # Maintenance list
+            maintenance_table_found = None
+            for t in maintenance_tables:
+                try:
+                    cursor.execute(f"SELECT id, hostname, issue_summary, status, technician FROM `{t}` ORDER BY id DESC LIMIT 25")
+                    maintenance_list = cursor.fetchall() or []
+                    maintenance_table_found = t
+                    break
+                except Exception:
+                    continue
+
+            # Notifications
+            for t in notifications_tables:
+                try:
+                    cursor.execute(f"SELECT message, timestamp AS time FROM `{t}` ORDER BY timestamp DESC LIMIT 10")
+                    notifications = cursor.fetchall() or []
+                    break
+                except Exception:
+                    continue
+
+            # Audit logs
+            for t in audit_tables:
+                try:
+                    cursor.execute(f"SELECT timestamp AS time, user_id AS user, action FROM `{t}` ORDER BY timestamp DESC LIMIT 25")
+                    audit_logs = cursor.fetchall() or []
+                    # map user ids to names where possible
+                    for a in audit_logs:
+                        try:
+                            uid = a.get('user')
+                            if uid:
+                                cursor.execute("SELECT username FROM users WHERE id=%s", (uid,))
+                                uu = cursor.fetchone()
+                                a['user'] = uu['username'] if uu else str(uid)
+                        except Exception:
+                            a['user'] = str(a.get('user'))
+                    break
+                except Exception:
+                    continue
+
+            # Current sessions - try sessions table
+            try:
+                cursor.execute("SELECT COUNT(*) AS cnt FROM sessions")
+                r = cursor.fetchone()
+                if r and r.get('cnt') is not None:
+                    current_sessions = r['cnt']
+            except Exception:
+                current_sessions = 0
+
+    finally:
+        conn.close()
+
+    # Usage data placeholders (charts)
+    usage_labels = ['6h', '5h', '4h', '3h', '2h', '1h', 'Now']
+    usage_series = [2, 3, 5, 4, 6, 7, active_count or 0]
+
+    return render_template('admindashboard.html', current_user=session,
+                           systems=systems, users=users,
+                           recent_activity=recent_activity, maintenance_list=maintenance_list,
+                           notifications=notifications, audit_logs=audit_logs,
+                           active_count=active_count, faulty_count=faulty_count,
+                           maintenance_count=maintenance_count, total_systems=total_systems,
+                           current_sessions=current_sessions, usage_labels=usage_labels,
+                           usage_series=usage_series)
+
+
+# POST: Add new desktop
+@app.route('/admin/assets/add', methods=['POST'])
+def admin_add_asset():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    uuid_val = request.form.get('uuid')
+    hostname = request.form.get('hostname')
+    location = request.form.get('location')
+    status = request.form.get('status', 'working')
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute("INSERT INTO devices (uuid, hostname, location, status) VALUES (%s,%s,%s,%s)",
+                               (uuid_val, hostname, location, status))
+                conn.commit()
+                flash('Desktop added successfully')
+            except Exception:
+                # try alternative table names
+                try:
+                    cursor.execute("INSERT INTO systems (uuid, hostname, location, status) VALUES (%s,%s,%s,%s)",
+                                   (uuid_val, hostname, location, status))
+                    conn.commit()
+                    flash('Desktop added successfully')
+                except Exception:
+                    flash('Failed to add desktop - database error')
+    finally:
+        conn.close()
+    return redirect(url_for('admin_dashboard'))
+
+
+# POST: Create new user
+@app.route('/admin/users/add', methods=['POST'])
+def admin_add_user():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    username = request.form.get('username')
+    email = request.form.get('email')
+    role = request.form.get('role', 'Viewer')
+    password = request.form.get('password')
+    password_hash = generate_password_hash(password) if password else None
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute("INSERT INTO users (uuid, username, password_hash, role, email, status) VALUES (UUID(), %s, %s, %s, %s, %s)",
+                               (username, password_hash, role, email, 'active'))
+                conn.commit()
+                flash('User created successfully')
+            except Exception:
+                flash('Failed to create user - database error')
+    finally:
+        conn.close()
+    return redirect(url_for('admin_dashboard'))
+
+
+# POST: Save basic system settings (branding/logo)
+@app.route('/admin/settings', methods=['POST'])
+def admin_settings():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    app_name = request.form.get('app_name')
+    logo_path = request.form.get('logo_path')
+    session_timeout = request.form.get('session_timeout')
+
+    # This is a placeholder: implement persistence (db or config file) as needed
+    flash('Settings saved (placeholder). To persist settings, implement storage in DB or config file.')
+    return redirect(url_for('admin_dashboard'))
 
 
 @app.route('/techniciandashboard')
