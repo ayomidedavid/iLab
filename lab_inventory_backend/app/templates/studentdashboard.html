@@ -7,9 +7,66 @@
     <link href="/static/style.css" rel="stylesheet">
 </head>
 <body>
-    <h2>Welcome, {{ current_user.username }}!</h2>
-    <h3>Student Dashboard</h3>
-    <p>View your assigned system and scan QR for attendance.</p>
-    <a href="/signout">Sign Out</a>
+        <div class="container py-4">
+            <h2 class="mb-3">Welcome, {{ current_user.username }}!</h2>
+            <div class="card mb-4 p-3 shadow-sm">
+                <h4 class="mb-2">Your Assigned System</h4>
+                {% if assigned_system %}
+                    <ul class="list-group list-group-flush mb-2">
+                        <li class="list-group-item"><strong>UUID:</strong> {{ assigned_system.uuid }}</li>
+                        <li class="list-group-item"><strong>Hostname:</strong> {{ assigned_system.hostname }}</li>
+                        <li class="list-group-item"><strong>Location:</strong> {{ assigned_system.location }}</li>
+                        <li class="list-group-item"><strong>Status:</strong> <span class="badge bg-success">{{ assigned_system.status }}</span></li>
+                    </ul>
+                {% else %}
+                    <div class="text-muted">No system assigned yet.</div>
+                {% endif %}
+                                    <button class="btn btn-outline-success mt-2" data-bs-toggle="modal" data-bs-target="#qrModal">Generate QR Code for Attendance</button>
+                            </div>
+
+                            <!-- QR Code Modal -->
+                            <div class="modal fade" id="qrModal" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Attendance QR Code</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body text-center">
+                                            <img id="qrImage" src="/student/attendance/qr" alt="QR Code" style="max-width: 220px;" />
+                                            <div class="mt-2">Scan this QR code to mark your attendance.</div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+            </div>
+
+            <div class="card mb-4 p-3 shadow-sm">
+                <h5>Notifications</h5>
+                <ul class="list-group list-group-flush">
+                    {% for note in notifications %}
+                        <li class="list-group-item">{{ note.message }} <span class="text-muted small">{{ note.time }}</span></li>
+                    {% else %}
+                        <li class="list-group-item text-muted">No notifications</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card mb-4 p-3 shadow-sm">
+                <h5>Recent Activity</h5>
+                <ul class="list-group list-group-flush">
+                    {% for act in recent_activity %}
+                        <li class="list-group-item">{{ act.message }} <span class="text-muted small">{{ act.time }}</span></li>
+                    {% else %}
+                        <li class="list-group-item text-muted">No recent activity</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <a href="/signout" class="btn btn-outline-danger">Sign Out</a>
+        </div>
 </body>
 </html>

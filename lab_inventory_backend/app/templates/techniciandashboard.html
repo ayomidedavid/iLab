@@ -7,9 +7,152 @@
     <link href="/static/style.css" rel="stylesheet">
 </head>
 <body>
-    <h2>Welcome, {{ current_user.username }}!</h2>
-    <h3>Technician Dashboard</h3>
-    <p>Update device status, log repairs, run audits.</p>
-    <a href="/signout">Sign Out</a>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="mb-0">Welcome, {{ current_user.username }}!</h2>
+                <div class="muted">Technician Dashboard</div>
+            </div>
+            <a href="/signout" class="btn btn-outline-secondary">Sign Out</a>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card mb-4 p-3 shadow-sm">
+            <h5>Notifications</h5>
+            <ul class="list-group list-group-flush">
+                {% for note in notifications %}
+                    <li class="list-group-item">{{ note.message }} <span class="text-muted small">{{ note.time }}</span></li>
+                {% else %}
+                    <li class="list-group-item text-muted">No notifications</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Maintenance Queue -->
+        <div class="card mb-4 p-3 shadow-sm">
+            <h5>Maintenance Queue</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>System</th><th>Issue</th><th>Status</th><th>Update</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for m in maintenance_list %}
+                        <tr>
+                            <td>{{ m.hostname }}</td>
+                            <td>{{ m.issue_summary }}</td>
+                            <td><span class="badge bg-warning text-dark">{{ m.status }}</span></td>
+                            <td>
+                                <form method="post" action="/technician/update_status">
+                                    <input type="hidden" name="system_id" value="{{ m.id }}">
+                                    <select name="status" class="form-select form-select-sm d-inline w-auto">
+                                        <option value="in progress">In Progress</option>
+                                        <option value="fixed">Fixed</option>
+                                        <option value="needs parts">Needs Parts</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary ms-1">Update</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No maintenance items</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-sm btn-outline-success mt-2" id="exportMaintenance">Export Maintenance Log</button>
+        </div>
+
+        <!-- Parts Inventory -->
+        <div class="card mb-4 p-3 shadow-sm">
+            <h5>Parts Inventory</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Part</th><th>Available</th><th>Request</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for part in parts %}
+                        <tr>
+                            <td>{{ part.name }}</td>
+                            <td>{{ part.available }}</td>
+                            <td>
+                                <form method="post" action="/technician/request_part">
+                                    <input type="hidden" name="part_id" value="{{ part.id }}">
+                                    <input type="number" name="quantity" min="1" max="{{ part.available }}" class="form-control form-control-sm d-inline w-auto" style="width:80px;">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary ms-1">Request</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-center text-muted">No parts available</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card mb-4 p-3 shadow-sm">
+            <h5>Recent Activity</h5>
+            <ul class="list-group list-group-flush">
+                {% for act in recent_activity %}
+                    <li class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <small class="text-muted">{{ act.time }}</small>
+                            <small class="muted">{{ act.user }}</small>
+                        </div>
+                        <div>{{ act.message }}</div>
+                    </li>
+                {% else %}
+                    <li class="list-group-item text-muted">No recent activity</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Report New Issue -->
+        <div class="card mb-4 p-3 shadow-sm">
+            <h5>Report New Issue</h5>
+            <form method="post" action="/technician/report_issue">
+                <div class="mb-2">
+                    <label class="form-label">System</label>
+                    <select name="system" class="form-select">
+                        {% for sys in systems %}
+                            <option value="{{ sys.id }}">{{ sys.hostname }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Issue Description</label>
+                    <textarea name="description" class="form-control" rows="2" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-outline-danger">Report Issue</button>
+            </form>
+        </div>
+
+        <!-- Profile & Settings -->
+        <div class="card mb-4 p-3 shadow-sm">
+            <h5>Profile & Settings</h5>
+            <form method="post" action="/technician/settings">
+                <div class="mb-2">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ current_user.email }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Change Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="New password">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Notification Preferences</label>
+                    <select name="notify" class="form-select">
+                        <option value="all">All</option>
+                        <option value="maintenance">Maintenance Only</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Save Changes</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

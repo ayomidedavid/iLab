@@ -15,14 +15,217 @@ def signout():
 def student_dashboard():
     if 'user_id' not in session or session.get('role') != 'student':
         return redirect(url_for('signin'))
-    return render_template('studentdashboard.html', current_user=session)
+    user_id = session.get('user_id')
+    assigned_system = None
+    notifications = []
+    recent_activity = []
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Find assigned system for student
+            try:
+                cursor.execute("SELECT uuid, hostname, location, status FROM devices WHERE assigned_to=%s LIMIT 1", (session.get('username'),))
+                assigned_system = cursor.fetchone()
+                if not assigned_system:
+                    cursor.execute("SELECT uuid, hostname, location, status FROM systems WHERE assigned_to=%s LIMIT 1", (session.get('username'),))
+                    assigned_system = cursor.fetchone()
+            except Exception:
+                assigned_system = None
+
+            # Notifications
+            try:
+                cursor.execute("SELECT message, timestamp AS time FROM notifications WHERE user_id=%s ORDER BY timestamp DESC LIMIT 5", (user_id,))
+                notifications = cursor.fetchall() or []
+            except Exception:
+                notifications = []
+
+            # Recent activity
+            try:
+                cursor.execute("SELECT action AS message, timestamp AS time FROM activity_logs WHERE user_id=%s ORDER BY timestamp DESC LIMIT 5", (user_id,))
+                recent_activity = cursor.fetchall() or []
+            except Exception:
+                recent_activity = []
+    finally:
+        conn.close()
+    return render_template('studentdashboard.html', current_user=session, assigned_system=assigned_system, notifications=notifications, recent_activity=recent_activity)
 
 
 @app.route('/admindashboard')
 def admin_dashboard():
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('signin'))
+    # Prepare defaults
+    total_systems = 0
+    active_count = faulty_count = maintenance_count = 0
+    systems = []
+    users = []
+    recent_activity = []
+    maintenance_list = []
+    notifications = []
+    audit_logs = []
+    current_sessions = 0
 
+    # Helper lists to try common table names
+    systems_tables = ['devices', 'systems', 'assets', 'desktops']
+    activity_tables = ['activity_logs', 'activity', 'logs']
+    maintenance_tables = ['maintenance', 'maintenance_queue', 'repairs']
+    notifications_tables = ['notifications', 'alerts']
+    audit_tables = ['audit_logs', 'audits']
+    users_table = 'users'
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Find systems table and counts
+            systems_table_found = None
+            for t in systems_tables:
+                try:
+                    cursor.execute(f"SELECT COUNT(*) AS cnt FROM `{t}`")
+                    row = cursor.fetchone()
+                    if row and row.get('cnt') is not None:
+                        total_systems = row['cnt']
+                        systems_table_found = t
+                        break
+                except Exception:
+                    continue
+
+            # If a systems table was found, get status breakdown and a sample list
+            if systems_table_found:
+                try:
+                    cursor.execute(f"SELECT status, COUNT(*) AS cnt FROM `{systems_table_found}` GROUP BY status")
+                    for r in cursor.fetchall():
+                        st = (r.get('status') or '').lower()
+                        cnt = r.get('cnt', 0)
+                        if st in ('active', 'working', 'running'):
+                            active_count += cnt
+                        elif st in ('faulty', 'broken'):
+                            faulty_count += cnt
+                        elif st in ('maintenance', 'repair'):
+                            maintenance_count += cnt
+                        else:
+                            pass
+                except Exception:
+                    pass
+
+                try:
+                    cursor.execute(f"SELECT uuid, hostname, location, status, assigned_to FROM `{systems_table_found}` ORDER BY id DESC LIMIT 100")
+                    systems = cursor.fetchall() or []
+                except Exception:
+                    systems = []
+
+            # Users
+            try:
+                cursor.execute(f"SELECT username, role, status FROM `{users_table}` ORDER BY id DESC LIMIT 100")
+                users = cursor.fetchall() or []
+            except Exception:
+                users = []
+
+            # Recent activity
+            activity_table_found = None
+            for t in activity_tables:
+                try:
+                    cursor.execute(f"SELECT action AS message, timestamp AS time, user_id FROM `{t}` ORDER BY timestamp DESC LIMIT 25")
+                    recent_activity = cursor.fetchall() or []
+                    activity_table_found = t
+                    break
+                except Exception:
+                    continue
+
+            # Attempt to enrich recent activity with username if possible
+            if recent_activity:
+                for act in recent_activity:
+                    try:
+                        uid = act.get('user_id')
+                        if uid:
+                            cursor.execute("SELECT username FROM users WHERE id=%s", (uid,))
+                            u = cursor.fetchone()
+                            act['user'] = u['username'] if u else 'User ' + str(uid)
+                        else:
+                            act['user'] = 'System'
+                    except Exception:
+                        act['user'] = 'System'
+
+            # Maintenance list
+            maintenance_table_found = None
+            for t in maintenance_tables:
+                try:
+                    cursor.execute(f"SELECT id, hostname, issue_summary, status, technician FROM `{t}` ORDER BY id DESC LIMIT 25")
+                    maintenance_list = cursor.fetchall() or []
+                    maintenance_table_found = t
+                    break
+                except Exception:
+                    continue
+
+            # Notifications
+            for t in notifications_tables:
+                try:
+                    cursor.execute(f"SELECT message, timestamp AS time FROM `{t}` ORDER BY timestamp DESC LIMIT 10")
+                    notifications = cursor.fetchall() or []
+                    break
+                except Exception:
+                    continue
+
+            # Audit logs
+            for t in audit_tables:
+                try:
+                    cursor.execute(f"SELECT timestamp AS time, user_id AS user, action FROM `{t}` ORDER BY timestamp DESC LIMIT 25")
+                    audit_logs = cursor.fetchall() or []
+                    for a in audit_logs:
+                        try:
+                            uid = a.get('user')
+                            if uid:
+                                cursor.execute("SELECT username FROM users WHERE id=%s", (uid,))
+                                uu = cursor.fetchone()
+                                a['user'] = uu['username'] if uu else str(uid)
+                        except Exception:
+                            a['user'] = str(a.get('user'))
+                    break
+                except Exception:
+                    continue
+
+            # Current sessions - try sessions table
+            try:
+                cursor.execute("SELECT COUNT(*) AS cnt FROM sessions")
+                r = cursor.fetchone()
+                if r and r.get('cnt') is not None:
+                    current_sessions = r['cnt']
+            except Exception:
+                current_sessions = 0
+
+    finally:
+        conn.close()
+
+    usage_labels = ['6h', '5h', '4h', '3h', '2h', '1h', 'Now']
+    usage_series = [2, 3, 5, 4, 6, 7, active_count or 0]
+
+    return render_template('admindashboard.html', current_user=session,
+                           systems=systems, users=users,
+                           recent_activity=recent_activity, maintenance_list=maintenance_list,
+                           notifications=notifications, audit_logs=audit_logs,
+                           active_count=active_count, faulty_count=faulty_count,
+                           maintenance_count=maintenance_count, total_systems=total_systems,
+                           current_sessions=current_sessions, usage_labels=usage_labels,
+                           usage_series=usage_series)
+
+@app.route('/admin/users/approve', methods=['POST'])
+def admin_approve_user():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    username = request.form.get('username')
+    if not username:
+        flash('No username provided for approval')
+        return redirect(url_for('admin_dashboard'))
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE users SET status='active' WHERE username=%s AND status='pending'", (username,))
+            conn.commit()
+            flash(f"User '{username}' approved successfully.")
+    except Exception:
+        flash('Failed to approve user - database error')
+    finally:
+        conn.close()
+    return redirect(url_for('admin_dashboard'))
     # Prepare defaults
     total_systems = 0
     active_count = faulty_count = maintenance_count = 0
@@ -256,7 +459,52 @@ def admin_settings():
 def technician_dashboard():
     if 'user_id' not in session or session.get('role') != 'technician':
         return redirect(url_for('signin'))
-    return render_template('techniciandashboard.html', current_user=session)
+    user_id = session.get('user_id')
+    notifications = []
+    recent_activity = []
+    maintenance_list = []
+    parts = []
+    systems = []
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Maintenance queue
+            try:
+                cursor.execute("SELECT id, hostname, issue_summary, status FROM maintenance WHERE technician=%s ORDER BY id DESC LIMIT 25", (session.get('username'),))
+                maintenance_list = cursor.fetchall() or []
+            except Exception:
+                maintenance_list = []
+
+            # Notifications
+            try:
+                cursor.execute("SELECT message, timestamp AS time FROM notifications WHERE user_id=%s ORDER BY timestamp DESC LIMIT 5", (user_id,))
+                notifications = cursor.fetchall() or []
+            except Exception:
+                notifications = []
+
+            # Recent activity
+            try:
+                cursor.execute("SELECT action AS message, timestamp AS time FROM activity_logs WHERE user_id=%s ORDER BY timestamp DESC LIMIT 10", (user_id,))
+                recent_activity = cursor.fetchall() or []
+            except Exception:
+                recent_activity = []
+
+            # Parts inventory
+            try:
+                cursor.execute("SELECT id, name, available FROM parts ORDER BY name ASC LIMIT 50")
+                parts = cursor.fetchall() or []
+            except Exception:
+                parts = []
+
+            # Systems list for reporting issues
+            try:
+                cursor.execute("SELECT id, hostname FROM systems ORDER BY hostname ASC LIMIT 50")
+                systems = cursor.fetchall() or []
+            except Exception:
+                systems = []
+    finally:
+        conn.close()
+    return render_template('techniciandashboard.html', current_user=session, notifications=notifications, recent_activity=recent_activity, maintenance_list=maintenance_list, parts=parts, systems=systems)
 
 
 @app.route('/lecturerdashboard')
@@ -270,7 +518,75 @@ def lecturer_dashboard():
 def viewonly_dashboard():
     if 'user_id' not in session or session.get('role') != 'view-only':
         return redirect(url_for('signin'))
-    return render_template('viewonlydashboard.html', current_user=session)
+    total_systems = 0
+    active_count = faulty_count = maintenance_count = 0
+    systems = []
+    notifications = []
+    maintenance_list = []
+    recent_activity = []
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Systems
+            try:
+                cursor.execute("SELECT uuid, hostname, location, status, assigned_to FROM systems ORDER BY id DESC LIMIT 100")
+                systems = cursor.fetchall() or []
+            except Exception:
+                systems = []
+
+            # Inventory summary
+            try:
+                cursor.execute("SELECT COUNT(*) AS cnt FROM systems")
+                row = cursor.fetchone()
+                if row and row.get('cnt') is not None:
+                    total_systems = row['cnt']
+                cursor.execute("SELECT status, COUNT(*) AS cnt FROM systems GROUP BY status")
+                for r in cursor.fetchall():
+                    st = (r.get('status') or '').lower()
+                    cnt = r.get('cnt', 0)
+                    if st in ('active', 'working', 'running'):
+                        active_count += cnt
+                    elif st in ('faulty', 'broken'):
+                        faulty_count += cnt
+                    elif st in ('maintenance', 'repair'):
+                        maintenance_count += cnt
+            except Exception:
+                pass
+
+            # Notifications
+            try:
+                cursor.execute("SELECT message, timestamp AS time FROM notifications ORDER BY timestamp DESC LIMIT 10")
+                notifications = cursor.fetchall() or []
+            except Exception:
+                notifications = []
+
+            # Maintenance queue
+            try:
+                cursor.execute("SELECT hostname, issue_summary, status, technician FROM maintenance ORDER BY id DESC LIMIT 25")
+                maintenance_list = cursor.fetchall() or []
+            except Exception:
+                maintenance_list = []
+
+            # Recent activity
+            try:
+                cursor.execute("SELECT action AS message, timestamp AS time, user_id FROM activity_logs ORDER BY timestamp DESC LIMIT 25")
+                recent_activity = cursor.fetchall() or []
+                for act in recent_activity:
+                    try:
+                        uid = act.get('user_id')
+                        if uid:
+                            cursor.execute("SELECT username FROM users WHERE id=%s", (uid,))
+                            u = cursor.fetchone()
+                            act['user'] = u['username'] if u else 'User ' + str(uid)
+                        else:
+                            act['user'] = 'System'
+                    except Exception:
+                        act['user'] = 'System'
+            except Exception:
+                recent_activity = []
+    finally:
+        conn.close()
+    return render_template('viewonlydashboard.html', current_user=session, systems=systems, total_systems=total_systems, active_count=active_count, faulty_count=faulty_count, maintenance_count=maintenance_count, notifications=notifications, maintenance_list=maintenance_list, recent_activity=recent_activity)
 
 @app.route('/')
 def index():
