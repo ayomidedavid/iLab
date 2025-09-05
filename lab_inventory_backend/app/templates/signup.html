@@ -1,38 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Sign Up</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/style.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign Up — iLab</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/style.css" rel="stylesheet">
+  <style>
+    :root{ --primary-900:#2c3e50; --primary-500:#3498db; }
+    body{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--primary-900) 0%,var(--primary-500) 100%); color:#fff; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+    .auth-card{ width:100%; max-width:520px; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border-radius:14px; padding:28px; box-shadow:0 10px 30px rgba(0,0,0,0.25); color:#eef6fb; backdrop-filter: blur(6px); }
+    .logo-wrap{ display:flex; align-items:center; gap:12px; justify-content:center; margin-bottom:12px; }
+    .logo{ width:64px; height:auto; }
+    .app-title{ font-size:1.25rem; font-weight:700; letter-spacing:1px; }
+    .lead-sub{ font-size:0.95rem; color: rgba(255,255,255,0.85); margin-bottom:14px; text-align:center }
+    .form-control:focus{ box-shadow:0 0 0 0.15rem rgba(52,152,219,0.18); }
+    .btn-primary{ background: linear-gradient(90deg, #3aa0e6, #2c7fcf); border: none; }
+    .small-muted{ color: rgba(255,255,255,0.7); }
+    .divider{ height:1px; background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.06)); margin:16px 0; }
+    .footer-note{ font-size:0.85rem; color: rgba(255,255,255,0.7); text-align:center; margin-top:12px }
+    .flash{ margin-bottom:12px }
+  </style>
 </head>
 <body>
-        <h2>Sign Up</h2>
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <ul>
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-    <form method="POST">
-        <label>Username:</label><br>
-        <input type="text" name="username" required><br>
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br>
-        <label>Email:</label><br>
-        <input type="email" name="email"><br>
-        <label>Role:</label><br>
-        <select name="role" required>
-            <option value="student">Student</option>
-            <option value="lecturer">Lecturer</option>
-            <option value="technician">Technician</option>
-            <option value="view-only">View-Only</option>
-        </select><br><br>
-        <button type="submit">Sign Up</button>
+  <div class="auth-card">
+    <div class="logo-wrap">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="iLab" class="logo">
+      <div>
+        <div class="app-title">iLab</div>
+        <div class="small-muted">Laboratory Inventory & Management</div>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">
+          {% for m in messages %}
+            <div class="alert alert-warning alert-sm" role="alert">{{ m }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <p class="lead-sub">Create an account to access iLab. Administrators approve new accounts before activation.</p>
+
+    <form method="POST" action="/signup" id="signupForm">
+      <div class="row g-2">
+        <div class="col-md-6 mb-3">
+          <label class="form-label small-muted">Username</label>
+          <input type="text" name="username" class="form-control" placeholder="choose a username" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label small-muted">Email (optional)</label>
+          <input type="email" name="email" class="form-control" placeholder="you@domain.com">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label small-muted">Role</label>
+        <select name="role" class="form-select">
+          <option value="student">Student</option>
+          <option value="lecturer">Lecturer</option>
+          <option value="technician">Technician</option>
+          <option value="view-only">Viewer</option>
+        </select>
+      </div>
+
+      <div class="row g-2">
+        <div class="col-md-6 mb-3">
+          <label class="form-label small-muted">Password</label>
+          <input type="password" name="password" id="password" class="form-control" placeholder="Create a password" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label small-muted">Confirm Password</label>
+          <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="Repeat password" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <div id="passwordHelp" class="form-text small-muted">Password should be at least 8 characters.</div>
+      </div>
+
+      <button class="btn btn-primary btn-lg w-100 mb-2" type="submit">Create Account</button>
+
+      <div class="divider"></div>
+
+      <div class="footer-note mt-3">Already have an account? <a href="/signin" class="text-white fw-bold">Sign in</a></div>
     </form>
-    <p>Already have an account? <a href="/signin">Sign In</a></p>
+  </div>
+
+  <script>
+    document.getElementById('signupForm')?.addEventListener('submit', function(e){
+      const pw = document.getElementById('password').value;
+      const cpw = document.getElementById('confirm_password').value;
+      if(pw !== cpw){
+        e.preventDefault();
+        alert('Passwords do not match');
+        return false;
+      }
+      if(pw.length < 8){
+        e.preventDefault();
+        alert('Password should be at least 8 characters');
+        return false;
+      }
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
