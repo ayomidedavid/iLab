@@ -1,0 +1,30 @@
+<!-- templates/add_asset.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add New Asset</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Add New Asset</h1>
+        <form method="post" action="{{ url_for('add_asset') }}">
+            <table>
+                <tr><th>Device Name</th><td><input type="text" name="device_name" required></td></tr>
+                <tr><th>Manufacturer</th><td><input type="text" name="manufacturer"></td></tr>
+                <tr><th>Model</th><td><input type="text" name="model"></td></tr>
+                <tr><th>Serial Number</th><td><input type="text" name="serial_number"></td></tr>
+                <tr><th>OS</th><td><input type="text" name="os"></td></tr>
+                <tr><th>CPU</th><td><input type="text" name="cpu"></td></tr>
+                <tr><th>RAM</th><td><input type="text" name="ram"></td></tr>
+                <tr><th>Storage</th><td><input type="text" name="storage"></td></tr>
+                <tr><th>Location</th><td><input type="text" name="location"></td></tr>
+                <tr><th>Status</th><td><input type="text" name="status" value="working"></td></tr>
+            </table>
+            <button type="submit">Add Asset</button>
+        </form>
+        <a href="/">Back to Home</a>
+    </div>
+</body>
+</html>

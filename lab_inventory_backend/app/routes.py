@@ -3,6 +3,63 @@ from flask import render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.db import get_db_connection
 
+
+# Lecturer: Start new session
+@app.route('/lecturer/session/start', methods=['POST'])
+def lecturer_start_session():
+    if 'user_id' not in session or session.get('role') != 'lecturer':
+        flash('Only lecturers can start sessions.')
+        return redirect(url_for('signin'))
+    name = request.form.get('name')
+    date = request.form.get('date')
+    time = request.form.get('time')
+    lecturer_id = session.get('user_id')
+    if not name or not date or not time:
+        flash('Please provide all session details.')
+        return redirect(url_for('lecturer_dashboard'))
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO sessions (name, date, time, lecturer_id, status)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (name, date, time, lecturer_id, 'active'))
+            conn.commit()
+        flash('Session started successfully!')
+    except Exception as e:
+        flash('Error starting session: ' + str(e))
+    finally:
+        conn.close()
+    return redirect(url_for('lecturer_dashboard'))
+
+@app.route('/asset/<asset_id>', methods=['GET', 'POST'])
+def asset_info(asset_id):
+    from app.db import get_db_connection
+    conn = get_db_connection()
+    if request.method == 'POST' and session.get('role') == 'technician':
+        # Update asset info
+        fields = ['device_name', 'manufacturer', 'model', 'serial_number', 'os', 'cpu', 'ram', 'storage', 'location', 'status']
+        values = [request.form.get(f) for f in fields]
+        update_sql = """
+            UPDATE assets SET device_name=%s, manufacturer=%s, model=%s, serial_number=%s, os=%s, cpu=%s, ram=%s, storage=%s, location=%s, status=%s
+            WHERE asset_id=%s
+        """
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(update_sql, (*values, asset_id))
+                conn.commit()
+                flash('Asset information updated successfully.')
+        except Exception:
+            flash('Failed to update asset information.')
+    # Fetch asset info
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM assets WHERE asset_id = %s', (asset_id,))
+            asset = cursor.fetchone()
+    finally:
+        conn.close()
+    return render_template('asset_info.html', asset=asset)
+
 # Signout route
 @app.route('/signout')
 def signout():

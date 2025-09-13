@@ -1,2 +1,8 @@
 .venv/
 from werkzeug.security import generate_p.security import generate_p.security import generate_p
+laptop_inventory_template - laptop_inventory_template.csv
+assets.py
+generate_barcode.py
+qrcodes/
+init_db.sql
+alter_assets_table.sql

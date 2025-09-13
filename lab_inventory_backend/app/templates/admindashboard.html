@@ -85,11 +85,11 @@
             </div>
           </div>
           <div class="col-md-3">
-            <div class="card card-gradient p-3 shadow-sm">
-              <div class="muted">Active</div>
-              <div class="stat-number text-success">{{ active_count or 0 }}</div>
-              <div class="small muted">Currently running</div>
-            </div>
+              <div class="card card-gradient p-3 shadow-sm">
+                <div class="muted">Active Assets</div>
+                <div class="stat-number text-success" title="Number of active assets">{{ systems|length if systems is defined else (active_count or 0) }}</div>
+                <div class="small muted">Currently running</div>
+              </div>
           </div>
           <div class="col-md-3">
             <div class="card card-gradient p-3 shadow-sm">

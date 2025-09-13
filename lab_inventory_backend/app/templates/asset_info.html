@@ -1,0 +1,55 @@
+<!-- templates/asset_info.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Asset Information</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Asset Information</h1>
+        {% if asset %}
+        {% if session['role'] == 'technician' %}
+        <form method="post" action="{{ url_for('edit_asset', asset_id=asset['asset_id']) }}">
+            <table>
+                <tr><th>Asset ID</th><td>{{ asset['asset_id'] }}</td></tr>
+                <tr><th>Device Name</th><td><input type="text" name="device_name" value="{{ asset['device_name'] }}" required></td></tr>
+                <tr><th>Manufacturer</th><td><input type="text" name="manufacturer" value="{{ asset['manufacturer'] }}"></td></tr>
+                <tr><th>Model</th><td><input type="text" name="model" value="{{ asset['model'] }}"></td></tr>
+                <tr><th>Serial Number</th><td><input type="text" name="serial_number" value="{{ asset['serial_number'] }}"></td></tr>
+                <tr><th>OS</th><td><input type="text" name="os" value="{{ asset['os'] }}"></td></tr>
+                <tr><th>CPU</th><td><input type="text" name="cpu" value="{{ asset['cpu'] }}"></td></tr>
+                <tr><th>RAM</th><td><input type="text" name="ram" value="{{ asset['ram'] }}"></td></tr>
+                <tr><th>Storage</th><td><input type="text" name="storage" value="{{ asset['storage'] }}"></td></tr>
+                <tr><th>Location</th><td><input type="text" name="location" value="{{ asset['location'] }}"></td></tr>
+                <tr><th>Status</th><td><input type="text" name="status" value="{{ asset['status'] }}"></td></tr>
+            </table>
+            <button type="submit">Save Changes</button>
+        </form>
+        {% else %}
+        <table>
+            <tr><th>Asset ID</th><td>{{ asset['asset_id'] }}</td></tr>
+            <tr><th>Device Name</th><td>{{ asset['device_name'] }}</td></tr>
+            <tr><th>Manufacturer</th><td>{{ asset['manufacturer'] }}</td></tr>
+            <tr><th>Model</th><td>{{ asset['model'] }}</td></tr>
+            <tr><th>Serial Number</th><td>{{ asset['serial_number'] }}</td></tr>
+            <tr><th>OS</th><td>{{ asset['os'] }}</td></tr>
+            <tr><th>CPU</th><td>{{ asset['cpu'] }}</td></tr>
+            <tr><th>RAM</th><td>{{ asset['ram'] }}</td></tr>
+            <tr><th>Storage</th><td>{{ asset['storage'] }}</td></tr>
+            <tr><th>Location</th><td>{{ asset['location'] }}</td></tr>
+            <tr><th>Status</th><td>{{ asset['status'] }}</td></tr>
+        </table>
+        {% endif %}
+        {% else %}
+        <p>Asset not found.</p>
+        {% endif %}
+    {% if session['role'] == 'technician' %}
+    <a href="{{ url_for('technician_dashboard') }}">Back to Dashboard</a>
+    {% else %}
+    <a href="/">Back to Home</a>
+    {% endif %}
+    </div>
+</body>
+</html>
