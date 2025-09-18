@@ -2,54 +2,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Asset Information</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Asset — iLab</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body{background:linear-gradient(135deg,#2c3e50 0%,#3498db 100%);min-height:100vh;color:#fff}
+    .card-soft{background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02));backdrop-filter:blur(6px);border-radius:12px}
+    .label{font-weight:600;color:rgba(255,255,255,0.9)}
+    .value{color:rgba(255,255,255,0.95)}
+    .muted{color:rgba(255,255,255,0.7)}
+    .actions .btn{min-width:140px}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Asset Information</h1>
-        {% if asset %}
-        {% if session['role'] == 'technician' %}
-        <form method="post" action="{{ url_for('edit_asset', asset_id=asset['asset_id']) }}">
-            <table>
-                <tr><th>Asset ID</th><td>{{ asset['asset_id'] }}</td></tr>
-                <tr><th>Device Name</th><td><input type="text" name="device_name" value="{{ asset['device_name'] }}" required></td></tr>
-                <tr><th>Manufacturer</th><td><input type="text" name="manufacturer" value="{{ asset['manufacturer'] }}"></td></tr>
-                <tr><th>Model</th><td><input type="text" name="model" value="{{ asset['model'] }}"></td></tr>
-                <tr><th>Serial Number</th><td><input type="text" name="serial_number" value="{{ asset['serial_number'] }}"></td></tr>
-                <tr><th>OS</th><td><input type="text" name="os" value="{{ asset['os'] }}"></td></tr>
-                <tr><th>CPU</th><td><input type="text" name="cpu" value="{{ asset['cpu'] }}"></td></tr>
-                <tr><th>RAM</th><td><input type="text" name="ram" value="{{ asset['ram'] }}"></td></tr>
-                <tr><th>Storage</th><td><input type="text" name="storage" value="{{ asset['storage'] }}"></td></tr>
-                <tr><th>Location</th><td><input type="text" name="location" value="{{ asset['location'] }}"></td></tr>
-                <tr><th>Status</th><td><input type="text" name="status" value="{{ asset['status'] }}"></td></tr>
-            </table>
-            <button type="submit">Save Changes</button>
-        </form>
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="d-flex align-items-center mb-3">
+          <img src="{{ url_for('static', filename='logo.png') }}" class="logo me-3" alt="iLab" style="width:56px">
+          <div>
+            <h3 class="mb-0">Asset Information</h3>
+            <div class="muted">Details & management for the selected system</div>
+          </div>
+        </div>
+
+        {% if not asset %}
+          <div class="card card-soft p-4">
+            <div class="text-center">Asset not found.</div>
+            <div class="mt-3"><a class="btn btn-light" href="/">Back to Home</a></div>
+          </div>
         {% else %}
-        <table>
-            <tr><th>Asset ID</th><td>{{ asset['asset_id'] }}</td></tr>
-            <tr><th>Device Name</th><td>{{ asset['device_name'] }}</td></tr>
-            <tr><th>Manufacturer</th><td>{{ asset['manufacturer'] }}</td></tr>
-            <tr><th>Model</th><td>{{ asset['model'] }}</td></tr>
-            <tr><th>Serial Number</th><td>{{ asset['serial_number'] }}</td></tr>
-            <tr><th>OS</th><td>{{ asset['os'] }}</td></tr>
-            <tr><th>CPU</th><td>{{ asset['cpu'] }}</td></tr>
-            <tr><th>RAM</th><td>{{ asset['ram'] }}</td></tr>
-            <tr><th>Storage</th><td>{{ asset['storage'] }}</td></tr>
-            <tr><th>Location</th><td>{{ asset['location'] }}</td></tr>
-            <tr><th>Status</th><td>{{ asset['status'] }}</td></tr>
-        </table>
+        <div class="card card-soft p-4">
+          <div class="row gx-4">
+            <div class="col-md-7">
+              <h5 class="mb-3">{{ asset.device_name or asset.hostname or 'Unnamed System' }}</h5>
+
+              {% if session['role'] == 'technician' %}
+              <form method="post" action="{{ url_for('edit_asset', asset_id=asset.asset_id if asset.asset_id is defined else asset['asset_id']) }}">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label label">Device Name</label>
+                    <input class="form-control" name="device_name" value="{{ asset.device_name or asset.hostname }}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label label">Manufacturer</label>
+                    <input class="form-control" name="manufacturer" value="{{ asset.manufacturer or asset['manufacturer'] }}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label label">Model</label>
+                    <input class="form-control" name="model" value="{{ asset.model }}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label label">Serial Number</label>
+                    <input class="form-control" name="serial_number" value="{{ asset.serial_number }}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label label">OS</label>
+                    <input class="form-control" name="os" value="{{ asset.os }}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label label">Status</label>
+                    <select name="status" class="form-select">
+                      <option value="working" {% if asset.status=='working' %}selected{% endif %}>Working</option>
+                      <option value="active" {% if asset.status=='active' %}selected{% endif %}>Active</option>
+                      <option value="faulty" {% if asset.status=='faulty' %}selected{% endif %}>Faulty</option>
+                      <option value="maintenance" {% if asset.status=='maintenance' %}selected{% endif %}>Under Maintenance</option>
+                      <option value="reserved" {% if asset.status=='reserved' %}selected{% endif %}>Reserved</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label label">Location</label>
+                    <input class="form-control" name="location" value="{{ asset.location }}">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label label">Notes</label>
+                    <textarea class="form-control" name="notes" rows="3">{{ asset.notes or '' }}</textarea>
+                  </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-3 actions">
+                  <button type="submit" class="btn btn-primary">Save Changes</button>
+                  <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#decomModal">Decommission</button>
+                  <a href="{{ url_for('technician_dashboard') }}" class="btn btn-light">Back</a>
+                </div>
+              </form>
+
+              {% else %}
+              <dl class="row">
+                <dt class="col-sm-4 label">Asset ID</dt>
+                <dd class="col-sm-8 value">{{ asset.asset_id }}</dd>
+
+                <dt class="col-sm-4 label">Hostname / Name</dt>
+                <dd class="col-sm-8 value">{{ asset.device_name or asset.hostname }}</dd>
+
+                <dt class="col-sm-4 label">Manufacturer</dt>
+                <dd class="col-sm-8 value">{{ asset.manufacturer }}</dd>
+
+                <dt class="col-sm-4 label">Model</dt>
+                <dd class="col-sm-8 value">{{ asset.model }}</dd>
+
+                <dt class="col-sm-4 label">Serial</dt>
+                <dd class="col-sm-8 value">{{ asset.serial_number }}</dd>
+
+                <dt class="col-sm-4 label">OS / Specs</dt>
+                <dd class="col-sm-8 value">{{ asset.os }} — {{ asset.cpu or '' }} / {{ asset.ram or '' }} / {{ asset.storage or '' }}</dd>
+
+                <dt class="col-sm-4 label">Location</dt>
+                <dd class="col-sm-8 value">{{ asset.location }}</dd>
+
+                <dt class="col-sm-4 label">Status</dt>
+                <dd class="col-sm-8 value">{{ asset.status }}</dd>
+
+                <dt class="col-sm-4 label">Assigned To</dt>
+                <dd class="col-sm-8 value">{{ asset.assigned_to or '-' }}</dd>
+              </dl>
+
+              <div class="d-flex gap-2 mt-3 actions">
+                <a href="{{ url_for('index') }}" class="btn btn-light">Back to Home</a>
+                <a href="{{ url_for('asset_qr', asset_id=asset.asset_id) }}" class="btn btn-outline-primary">View QR</a>
+              </div>
+              {% endif %}
+
+            </div>
+
+            <div class="col-md-5">
+              <div class="text-center mb-3">
+                <div class="small muted">Asset Tag</div>
+                <img src="{{ url_for('static', filename='placeholder_qr.png') }}" alt="QR" style="max-width:220px" class="img-fluid rounded bg-white p-2">
+                <div class="mt-2 muted">{{ asset.uuid or asset.asset_id }}</div>
+              </div>
+
+              <div class="mt-3">
+                <h6 class="mb-2">Quick Info</h6>
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center">Status <span class="badge bg-info text-dark">{{ asset.status }}</span></li>
+                  <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center">Location <span class="muted">{{ asset.location }}</span></li>
+                  <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center">Assigned <span class="muted">{{ asset.assigned_to or '—' }}</span></li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Decommission modal -->
+        <div class="modal fade" id="decomModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="post" action="{{ url_for('decommission_asset', asset_id=asset.asset_id) }}">
+                <div class="modal-header">
+                  <h5 class="modal-title">Decommission Asset</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <p>Are you sure you want to decommission this system? This action is irreversible.</p>
+                  <div class="mb-3">
+                    <label class="form-label">Reason (optional)</label>
+                    <textarea name="reason" class="form-control"></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-danger">Decommission</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
         {% endif %}
-        {% else %}
-        <p>Asset not found.</p>
-        {% endif %}
-    {% if session['role'] == 'technician' %}
-    <a href="{{ url_for('technician_dashboard') }}">Back to Dashboard</a>
-    {% else %}
-    <a href="/">Back to Home</a>
-    {% endif %}
+      </div>
     </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

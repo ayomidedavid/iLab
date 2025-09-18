@@ -5,3 +5,5 @@ Flask-SQLAlchemy
 mysqlclient
 python-dotenv
 qrcode
+pymysql
+werkzeug
