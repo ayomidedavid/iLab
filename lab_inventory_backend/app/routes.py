@@ -1,7 +1,234 @@
+from flask import send_file
 from app import app
 from flask import render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.db import get_db_connection
+
+
+
+@app.route('/technician/assets')
+def technician_assets():
+    if 'user_id' not in session or session.get('role') != 'technician':
+        return redirect(url_for('signin'))
+    conn = get_db_connection()
+    systems = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM assets ORDER BY asset_id ASC')
+            systems = cursor.fetchall()
+    finally:
+        conn.close()
+    return render_template('technician_assets.html', systems=systems, current_user=session)
+from flask import send_file
+
+@app.route('/admin/users')
+def users():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    conn = get_db_connection()
+    users = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM users ORDER BY role ASC')
+            users = cursor.fetchall()
+    finally:
+        conn.close()
+    return render_template('users.html', users=users, current_user=session)
+
+
+
+@app.route('/admin/inventory')
+def inventory():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    conn = get_db_connection()
+    systems = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM assets ORDER BY asset_id ASC')
+            systems = cursor.fetchall()
+    finally:
+        conn.close()
+    return render_template('inventory.html', systems=systems, current_user=session)
+
+
+
+#  View all active assets in a table (admin only)
+@app.route('/admin/assets/active')
+def view_active_assets():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    conn = get_db_connection()
+    assets = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM assets WHERE status='working' ORDER BY asset_id ASC")
+            assets = cursor.fetchall()
+    finally:
+        conn.close()
+    return render_template('assets_table.html', assets=assets, current_user=session, systems=[], recent_activity=[], maintenance_list=[], notifications=[], audit_logs=[])
+# Serve QR code image for asset
+
+
+# View all assets in a table
+@app.route('/admin/assets')
+def view_assets():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    conn = get_db_connection()
+    assets = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM assets ORDER BY asset_id ASC')
+            assets = cursor.fetchall()
+    finally:
+        conn.close()
+    return render_template('assets_table.html', assets=assets, current_user=session, systems=[], recent_activity=[], maintenance_list=[], notifications=[], audit_logs=[])
+
+# Edit asset
+@app.route('/admin/assets/edit/<asset_id>', methods=['GET', 'POST'])
+def edit_asset(asset_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    conn = get_db_connection()
+    asset = None
+    try:
+        with conn.cursor() as cursor:
+            if request.method == 'POST':
+                fields = ['device_name', 'manufacturer', 'model', 'serial_number', 'os', 'cpu', 'ram', 'storage', 'location', 'status', 'mouse', 'keyboard', 'power_pack']
+                values = [request.form.get(f) for f in fields]
+                update_sql = """
+                    UPDATE assets SET device_name=%s, manufacturer=%s, model=%s, serial_number=%s, os=%s, cpu=%s, ram=%s, storage=%s, location=%s, status=%s, mouse=%s, keyboard=%s, power_pack=%s WHERE asset_id=%s
+                """
+                cursor.execute(update_sql, (*values, asset_id))
+                conn.commit()
+                flash('Asset updated successfully.')
+                return redirect(url_for('view_assets'))
+            cursor.execute('SELECT * FROM assets WHERE asset_id=%s', (asset_id,))
+            asset = cursor.fetchone()
+    finally:
+        conn.close()
+    return render_template('add_asset.html', asset=asset, edit_mode=True)
+
+# Delete asset
+@app.route('/admin/assets/delete/<asset_id>', methods=['POST'])
+def delete_asset(asset_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('signin'))
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('DELETE FROM assets WHERE asset_id=%s', (asset_id,))
+            conn.commit()
+            flash('Asset deleted successfully.')
+    finally:
+        conn.close()
+    return redirect(url_for('view_assets'))
+
+@app.route('/asset_qr/<asset_id>')
+def asset_qr(asset_id):
+    import os
+    qr_dir = os.path.join(os.path.dirname(__file__), 'qrcodes')
+    qr_path = os.path.join(qr_dir, f'{asset_id}.png')
+    if os.path.exists(qr_path):
+        return send_file(qr_path, mimetype='image/png')
+    else:
+        flash('QR code not found for this asset.')
+        return redirect(url_for('asset_info', asset_id=asset_id))
+
+
+# Technician: Asset access redirect (QR/manual)
+@app.route('/asset_info_redirect')
+def asset_info_redirect():
+    asset_id = request.args.get('asset_id')
+    if asset_id:
+        return redirect(url_for('asset_info', asset_id=asset_id))
+    else:
+        flash('Please enter or scan a valid Asset ID.')
+        return redirect(url_for('technician_dashboard'))
+
+
+# Decommission asset route
+@app.route('/decommission_asset/<asset_id>', methods=['POST'])
+def decommission_asset(asset_id):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE assets SET status=%s WHERE asset_id=%s", ('decommissioned', asset_id))
+            conn.commit()
+            flash('Asset decommissioned successfully.')
+    except Exception:
+        flash('Failed to decommission asset.')
+    finally:
+        conn.close()
+    return redirect(url_for('asset_info', asset_id=asset_id))
+
+
+
+# Technician: Add new asset
+@app.route('/add_asset', methods=['GET', 'POST'])
+def add_asset():
+    if 'user_id' not in session or session.get('role') not in ['technician', 'admin']:
+        flash('Only technicians and admins can add new assets.')
+        return redirect(url_for('signin'))
+    if request.method == 'POST':
+        fields = ['device_name', 'manufacturer', 'model', 'serial_number', 'os', 'cpu', 'ram', 'storage', 'location', 'status', 'mouse', 'keyboard', 'power_pack']
+        values = []
+        # Get main fields
+        allowed_status = ['GOOD', 'FAULTY', 'DECOMMISSIONED']
+        for f in fields:
+            val = request.form.get(f)
+            # Handle custom 'Other' values for dropdowns
+            if f == 'model' and val == 'Other':
+                val = request.form.get('model_other') or 'Other'
+            if f == 'cpu' and val == 'Other':
+                val = request.form.get('cpu_other') or 'Other'
+            if f == 'ram' and val == 'Other':
+                val = request.form.get('ram_other') or 'Other'
+            if f == 'location' and val == 'Other':
+                val = request.form.get('location_other') or 'Other'
+            if f == 'storage' and val == 'Other':
+                val = request.form.get('storage_other') or 'Other'
+            if f == 'status':
+                if val not in allowed_status:
+                    val = 'GOOD'  # fallback to default
+            values.append(val)
+        # Auto-generate asset_id and uuid
+        import uuid, os, qrcode
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT COUNT(*) AS cnt FROM assets')
+                count = cursor.fetchone()['cnt'] + 1
+                asset_id = f"ASSET{count:04d}"
+                asset_uuid = str(uuid.uuid4())
+                insert_sql = """
+                    INSERT INTO assets (asset_id, device_name, manufacturer, model, serial_number, os, cpu, ram, storage, location, status, mouse, keyboard, power_pack, uuid)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(insert_sql, (asset_id, *values, asset_uuid))
+                conn.commit()
+                # Generate QR code for the new asset
+                qr_dir = os.path.join(os.path.dirname(__file__), 'qrcodes')
+                os.makedirs(qr_dir, exist_ok=True)
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=4,
+                )
+                qr.add_data(asset_id)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color="black", back_color="white")
+                qr_path = os.path.join(qr_dir, f'{asset_id}.png')
+                img.save(qr_path)
+                flash('New asset added successfully! QR code generated.')
+                return redirect(url_for('asset_info', asset_id=asset_id))
+        except Exception:
+            flash('Failed to add new asset.')
+        finally:
+            conn.close()
+    return render_template('add_asset.html')
 
 
 # Lecturer: Start new session
@@ -123,12 +350,15 @@ def admin_dashboard():
     current_sessions = 0
 
     # Helper lists to try common table names
-    systems_tables = ['devices', 'systems', 'assets', 'desktops']
+    systems_tables = ['assets']
     activity_tables = ['activity_logs', 'activity', 'logs']
     maintenance_tables = ['maintenance', 'maintenance_queue', 'repairs']
     notifications_tables = ['notifications', 'alerts']
     audit_tables = ['audit_logs', 'audits']
     users_table = 'users'
+
+    # User role counts
+    student_count = lecturer_count = technician_count = admin_count = viewer_count = 0
 
     conn = get_db_connection()
     try:
@@ -142,6 +372,9 @@ def admin_dashboard():
                     if row and row.get('cnt') is not None:
                         total_systems = row['cnt']
                         systems_table_found = t
+                        # Also fetch all assets for the systems list
+                        cursor.execute(f"SELECT id, uuid, asset_id, device_name, manufacturer, model, serial_number, os, cpu, ram, storage, location, purchase_date, warranty_expiry, picture_path, status, mouse, keyboard, power_pack, created_at FROM `{t}` ORDER BY id ASC LIMIT 100")
+                        systems = cursor.fetchall() or []
                         break
                 except Exception:
                     continue
@@ -165,15 +398,30 @@ def admin_dashboard():
                     pass
 
                 try:
-                    cursor.execute(f"SELECT uuid, hostname, location, status, assigned_to FROM `{systems_table_found}` ORDER BY id DESC LIMIT 100")
+                    cursor.execute(f"SELECT id, uuid, asset_id, device_name, manufacturer, model, serial_number, os, cpu, ram, storage, location, purchase_date, warranty_expiry, picture_path, status, mouse, keyboard, power_pack, created_at FROM `{systems_table_found}` ORDER BY id ASC LIMIT 100")
                     systems = cursor.fetchall() or []
                 except Exception:
                     systems = []
 
-            # Users
+            # Users and role counts
             try:
                 cursor.execute(f"SELECT username, role, status FROM `{users_table}` ORDER BY id DESC LIMIT 100")
                 users = cursor.fetchall() or []
+                # Count users by role
+                cursor.execute(f"SELECT role, COUNT(*) AS cnt FROM `{users_table}` GROUP BY role")
+                for r in cursor.fetchall():
+                    role = (r.get('role') or '').lower()
+                    cnt = r.get('cnt', 0)
+                    if role == 'student':
+                        student_count = cnt
+                    elif role == 'lecturer':
+                        lecturer_count = cnt
+                    elif role == 'technician':
+                        technician_count = cnt
+                    elif role == 'admin':
+                        admin_count = cnt
+                    elif role == 'viewer':
+                        viewer_count = cnt
             except Exception:
                 users = []
 
@@ -262,7 +510,10 @@ def admin_dashboard():
                            active_count=active_count, faulty_count=faulty_count,
                            maintenance_count=maintenance_count, total_systems=total_systems,
                            current_sessions=current_sessions, usage_labels=usage_labels,
-                           usage_series=usage_series)
+                           usage_series=usage_series,
+                           student_count=student_count, lecturer_count=lecturer_count,
+                           technician_count=technician_count, admin_count=admin_count,
+                           viewer_count=viewer_count)
 
 @app.route('/admin/users/approve', methods=['POST'])
 def admin_approve_user():

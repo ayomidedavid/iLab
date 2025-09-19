@@ -41,13 +41,13 @@
       </div>
 
       <ul class="nav flex-column gap-1">
-        <li class="nav-item"><a class="nav-link active" href="#overview">Overview</a></li>
-        <li class="nav-item"><a class="nav-link" href="#inventory">Inventory</a></li>
-        <li class="nav-item"><a class="nav-link" href="#users">Users</a></li>
-        <li class="nav-item"><a class="nav-link" href="#sessions">Sessions</a></li>
-        <li class="nav-item"><a class="nav-link" href="#maintenance">Maintenance</a></li>
-        <li class="nav-item"><a class="nav-link" href="#reports">Reports</a></li>
-        <li class="nav-item"><a class="nav-link" href="#settings" data-bs-toggle="modal" data-bs-target="#settingsModal">Settings</a></li>
+  <li class="nav-item"><a class="nav-link active" href="{{ url_for('admin_dashboard') }}">Overview</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('inventory') }}">Inventory</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('users') }}">Users</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_dashboard') }}#sessions">Sessions</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_dashboard') }}#maintenance">Maintenance</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_dashboard') }}#reports">Reports</a></li>
+  <li class="nav-item"><a class="nav-link" href="#settings" data-bs-toggle="modal" data-bs-target="#settingsModal">Settings</a></li>
         <li class="nav-item mt-3"><a class="btn btn-light btn-sm w-100 text-center" href="/signout">Sign out</a></li>
       </ul>
     </nav>
@@ -65,44 +65,47 @@
               <small class="muted">Current sessions</small>
               <div class="fw-bold">{{ current_sessions or 0 }}</div>
             </div>
-            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAssetModal">+ Add Desktop</button>
+            <a href="{{ url_for('add_asset') }}" class="btn btn-outline-primary">+ Add Asset</a>
+            <!-- Removed separate refresh button; Overview link now refreshes dashboard -->
           </div>
         </div>
 
         <!-- Top stats -->
         <div class="row g-3 mb-4">
-          <div class="col-md-3">
+          <div class="col-md-2">
             <div class="card card-gradient p-3 shadow-sm">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <div class="muted">Total Systems</div>
-                  <div class="stat-number">{{ total_systems or 0 }}</div>
-                </div>
-                <div>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="#3498db"><path d="M3 3h18v4H3zM3 9h18v12H3z"/></svg>
-                </div>
-              </div>
+              <div class="muted">Total Systems</div>
+              <div class="stat-number">{{ total_systems or 0 }}</div>
             </div>
           </div>
-          <div class="col-md-3">
-              <div class="card card-gradient p-3 shadow-sm">
-                <div class="muted">Active Assets</div>
-                <div class="stat-number text-success" title="Number of active assets">{{ systems|length if systems is defined else (active_count or 0) }}</div>
-                <div class="small muted">Currently running</div>
-              </div>
-          </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <div class="card card-gradient p-3 shadow-sm">
-              <div class="muted">Faulty</div>
-              <div class="stat-number text-danger">{{ faulty_count or 0 }}</div>
-              <div class="small muted">Needs attention</div>
+              <div class="muted">Active Assets</div>
+              <div class="stat-number text-success">{{ systems|length if systems is defined else (active_count or 0) }}</div>
             </div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <div class="card card-gradient p-3 shadow-sm">
-              <div class="muted">Under Maintenance</div>
-              <div class="stat-number text-warning">{{ maintenance_count or 0 }}</div>
-              <div class="small muted">Assigned to technicians</div>
+              <div class="muted">Students</div>
+              <div class="stat-number text-primary">{{ student_count or 0 }}</div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card card-gradient p-3 shadow-sm">
+              <div class="muted">Lecturers</div>
+              <div class="stat-number text-info">{{ lecturer_count or 0 }}</div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card card-gradient p-3 shadow-sm">
+              <div class="muted">Technicians</div>
+              <div class="stat-number text-warning">{{ technician_count or 0 }}</div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card card-gradient p-3 shadow-sm">
+              <div class="muted">Admins</div>
+              <div class="stat-number text-dark">{{ admin_count or 0 }}</div>
             </div>
           </div>
         </div>
@@ -125,58 +128,7 @@
               </div>
             </div>
 
-            <div class="card p-3 mt-3 shadow-sm">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">Asset Inventory</h5>
-                <div>
-                  <button class="btn btn-sm btn-outline-secondary" id="exportCsv">Export CSV</button>
-                  <button class="btn btn-sm btn-outline-secondary" id="exportPdf">Export PDF</button>
-                </div>
-              </div>
-
-              <div class="table-responsive table-fixed mt-2">
-                <table class="table table-hover align-middle mb-0">
-                  <thead class="table-light position-sticky top-0">
-                    <tr>
-                      <th>UUID / Barcode</th>
-                      <th>Hostname</th>
-                      <th>Location</th>
-                      <th>Status</th>
-                      <th>Assigned To</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for system in systems[:15] %}
-                    <tr>
-                      <td>{{ system.uuid }}</td>
-                      <td>{{ system.hostname }}</td>
-                      <td>{{ system.location }}</td>
-                      <td>
-                        {% if system.status == 'active' %}
-                          <span class="badge bg-success badge-status">Active</span>
-                        {% elif system.status == 'faulty' %}
-                          <span class="badge bg-danger badge-status">Faulty</span>
-                        {% elif system.status == 'maintenance' %}
-                          <span class="badge bg-warning text-dark badge-status">Maintenance</span>
-                        {% else %}
-                          <span class="badge bg-secondary badge-status">{{ system.status }}</span>
-                        {% endif %}
-                      </td>
-                      <td>{{ system.assigned_to or '-' }}</td>
-                      <td>
-                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger">Decommission</button>
-                      </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="6" class="text-center text-muted">No systems available</td></tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-
-            </div>
+            <!-- Asset Inventory moved to inventory.html -->
           </div>
 
           <div class="col-lg-5">
@@ -237,67 +189,7 @@
         <!-- Users & Audit -->
         <div class="row g-4 mt-3">
           <div class="col-lg-6">
-            <div class="card p-3 shadow-sm">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">User & Role Management</h5>
-                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">New User</button>
-              </div>
-              <div class="table-responsive mt-2 table-fixed">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <form class="d-flex" method="get" action="#" onsubmit="return false;">
-                      <input class="form-control form-control-sm me-2" type="search" id="userSearch" placeholder="Search username..." aria-label="Search" oninput="filterUsers()">
-                      <select class="form-select form-select-sm me-2" id="roleFilter" onchange="filterUsers()">
-                        <option value="">All Roles</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Technician">Technician</option>
-                        <option value="Lecturer">Lecturer</option>
-                        <option value="Viewer">Viewer</option>
-                        <option value="Student">Student</option>
-                      </select>
-                    </form>
-                  </div>
-                  <table class="table table-hover mb-0" id="userTable">
-                    <thead class="table-light">
-                      <tr><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody id="userTableBody">
-                      {% for u in users|sort(attribute='role') %}
-                      <tr>
-                        <td>{{ u.username }}</td>
-                        <td>{{ u.role }}</td>
-                        <td>{{ u.status or 'active' }}</td>
-                        <td>
-                          <button class="btn btn-sm btn-outline-secondary">Edit</button>
-                          <button class="btn btn-sm btn-outline-danger">Deactivate</button>
-                          {% if u.status == 'pending' %}
-                            <form method="post" action="/admin/users/approve" style="display:inline">
-                              <input type="hidden" name="username" value="{{ u.username }}">
-                              <button type="submit" class="btn btn-sm btn-success ms-1">Approve</button>
-                            </form>
-                          {% endif %}
-                        </td>
-                      </tr>
-                      {% else %}
-                      <tr><td colspan="4" class="text-center text-muted">No users</td></tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                  <script>
-                    function filterUsers() {
-                      var searchInput = document.getElementById('userSearch').value.toLowerCase();
-                      var selectedRole = document.getElementById('roleFilter').value;
-                      var rows = document.querySelectorAll('#userTableBody tr');
-                      rows.forEach(function(row) {
-                        var username = row.cells[0].textContent.toLowerCase();
-                        var role = row.cells[1].textContent;
-                        var matchesSearch = username.includes(searchInput);
-                        var matchesRole = (!selectedRole || role === selectedRole);
-                        row.style.display = (matchesSearch && matchesRole) ? '' : 'none';
-                      });
-                    }
-                  </script>
-              </div>
-            </div>
+            <!-- User & Role Management moved to users.html -->
           </div>
 
           <div class="col-lg-6">
@@ -338,7 +230,7 @@
           <h5 class="modal-title">Add New Desktop</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <form method="post" action="/admin/assets/add">
+  <form method="post" action="{{ url_for('add_asset') }}">
           <div class="modal-body">
             <div class="row g-3">
               <div class="col-md-6">
@@ -365,7 +257,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Add Desktop</button>
+            <button type="submit" class="btn btn-primary">Add Asset</button>
           </div>
         </form>
       </div>

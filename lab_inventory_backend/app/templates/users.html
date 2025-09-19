@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}User & Role Management{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+  <h2>User & Role Management</h2>
+  <div class="table-responsive mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <form class="d-flex" method="get" action="#" onsubmit="return false;">
+        <input class="form-control form-control-sm me-2" type="search" id="userSearch" placeholder="Search username..." aria-label="Search" oninput="filterUsers()">
+        <select class="form-select form-select-sm me-2" id="roleFilter" onchange="filterUsers()">
+          <option value="">All Roles</option>
+          <option value="Admin">Admin</option>
+          <option value="Technician">Technician</option>
+          <option value="Lecturer">Lecturer</option>
+          <option value="Viewer">Viewer</option>
+          <option value="Student">Student</option>
+        </select>
+      </form>
+      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">New User</button>
+    </div>
+    <table class="table table-hover mb-0" id="userTable">
+      <thead class="table-light">
+        <tr><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="userTableBody">
+        {% for u in users|sort(attribute='role') %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{{ u.role }}</td>
+          <td>{{ u.status or 'approved' }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary">Edit</button>
+            <button class="btn btn-sm btn-outline-danger">Deactivate</button>
+            {% if u.status == 'pending' %}
+              <form method="post" action="/admin/users/approve" style="display:inline">
+                <input type="hidden" name="username" value="{{ u.username }}">
+                <button type="submit" class="btn btn-sm btn-success ms-1">Approve</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted">No users</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <script>
+      function filterUsers() {
+        var searchInput = document.getElementById('userSearch').value.toLowerCase();
+        var selectedRole = document.getElementById('roleFilter').value;
+        var rows = document.querySelectorAll('#userTableBody tr');
+        rows.forEach(function(row) {
+          var username = row.cells[0].textContent.toLowerCase();
+          var role = row.cells[1].textContent;
+          var matchesSearch = username.includes(searchInput);
+          var matchesRole = (!selectedRole || role === selectedRole);
+          row.style.display = (matchesSearch && matchesRole) ? '' : 'none';
+        });
+      }
+    </script>
+  </div>
+  <!-- AddUser Modal (copied from dashboard) -->
+  <div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Create New User</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="post" action="/admin/users/add">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Username</label>
+              <input name="username" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Role</label>
+              <select name="role" class="form-select">
+                <option>Admin</option>
+                <option>Technician</option>
+                <option>Lecturer</option>
+                <option>Viewer</option>
+                <option>Student</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              <input type="password" name="password" class="form-control" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create User</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

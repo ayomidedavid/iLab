@@ -1,3 +1,4 @@
+{% set current_user = current_user if current_user is defined else session if session is defined else {} %}
 <!-- templates/asset_info.html -->
 <!DOCTYPE html>
 <html lang="en">
@@ -31,7 +32,7 @@
         {% if not asset %}
           <div class="card card-soft p-4">
             <div class="text-center">Asset not found.</div>
-            <div class="mt-3"><a class="btn btn-light" href="/">Back to Home</a></div>
+            <div class="mt-3"><a class="btn btn-light" href="{% if current_user.role == 'admin' %}/admindashboard{% elif current_user.role == 'technician' %}/techniciandashboard{% elif current_user.role == 'lecturer' %}/lecturerdashboard{% elif current_user.role == 'student' %}/studentdashboard{% else %}/viewonlydashboard{% endif %}">Back to Home</a></div>
           </div>
         {% else %}
         <div class="card card-soft p-4">
@@ -120,8 +121,9 @@
               </dl>
 
               <div class="d-flex gap-2 mt-3 actions">
-                <a href="{{ url_for('index') }}" class="btn btn-light">Back to Home</a>
+                <a href="{% if current_user.role == 'admin' %}/admindashboard{% elif current_user.role == 'technician' %}/techniciandashboard{% elif current_user.role == 'lecturer' %}/lecturerdashboard{% elif current_user.role == 'student' %}/studentdashboard{% else %}/viewonlydashboard{% endif %}" class="btn btn-light">Back to Home</a>
                 <a href="{{ url_for('asset_qr', asset_id=asset.asset_id) }}" class="btn btn-outline-primary">View QR</a>
+                <a href="{{ url_for('add_asset') }}" class="btn btn-outline-success">Add Asset</a>
               </div>
               {% endif %}
 

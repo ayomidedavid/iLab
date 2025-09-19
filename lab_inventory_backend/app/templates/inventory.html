@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+  <h2>Asset Inventory</h2>
+  <div class="d-flex justify-content-end mb-2">
+    <a href="{{ url_for('add_asset') }}" class="btn btn-outline-primary">+ Add Asset</a>
+    <button class="btn btn-sm btn-outline-secondary ms-2" id="exportCsv">Export CSV</button>
+    <button class="btn btn-sm btn-outline-secondary ms-2" id="exportPdf">Export PDF</button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>UUID / Barcode</th>
+          <th>Hostname</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Assigned To</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for system in systems %}
+        <tr>
+          <td>{{ system.uuid }}</td>
+          <td>{{ system.hostname }}</td>
+          <td>{{ system.location }}</td>
+          <td>
+            {% if system.status == 'active' %}
+              <span class="badge bg-success badge-status">Active</span>
+            {% elif system.status == 'faulty' %}
+              <span class="badge bg-danger badge-status">Faulty</span>
+            {% elif system.status == 'maintenance' %}
+              <span class="badge bg-warning text-dark badge-status">Maintenance</span>
+            {% else %}
+              <span class="badge bg-secondary badge-status">{{ system.status }}</span>
+            {% endif %}
+          </td>
+          <td>{{ system.assigned_to or '-' }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary">Edit</button>
+            <button class="btn btn-sm btn-outline-danger">Decommission</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted">No systems available</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

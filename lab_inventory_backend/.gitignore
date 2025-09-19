@@ -6,3 +6,4 @@ generate_barcode.py
 qrcodes/
 init_db.sql
 alter_assets_table.sql
+app/dirty.py
